@@ -11,10 +11,15 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Interfaces/OnlineSessionInterface.h"
+#include "OnlineSessionSettings.h"
 #include "MPP.h"
 
-AMPPCharacter::AMPPCharacter()
+
+AMPPCharacter::AMPPCharacter() :
+	CreateSessionCompleteDelegate(FOnCreateSessionCompleteDelegate::CreateUObject(this,&ThisClass::OnCreateSessionComplete))
 {
+	
+	
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 		
@@ -147,5 +152,62 @@ void AMPPCharacter::DoJumpEnd()
 	// signal the character to stop jumping
 	StopJumping();
 	
+}
+
+void AMPPCharacter::CreateGameSession()
+{
+	// Called when pressing the 1 key
+	if (!OnlineSessionInterface.IsValid())
+	{
+		return;	
+	}
+
+	// Cleanup any undeleted local sessions
+	auto ExistingSession = OnlineSessionInterface->GetNamedSession(NAME_GameSession);
+	if (ExistingSession != nullptr)
+	{
+		OnlineSessionInterface->DestroySession(NAME_GameSession);
+	}
+
+	// Add delegate to OnCreateSessionDelegate list
+	OnlineSessionInterface->AddOnCreateSessionCompleteDelegate_Handle(CreateSessionCompleteDelegate);
+	
+	// Create session code with session configuration
+	TSharedPtr<FOnlineSessionSettings> SessionSettings = MakeShareable(new FOnlineSessionSettings());
+	SessionSettings->bIsLANMatch = false;
+	SessionSettings->NumPublicConnections = 4;
+	SessionSettings->bAllowJoinInProgress = true;
+	SessionSettings->bAllowJoinViaPresence = true;
+	SessionSettings->bShouldAdvertise = true;
+	SessionSettings->bUsesPresence = true;
+	SessionSettings->bUseLobbiesIfAvailable = true; 
+	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
+	OnlineSessionInterface->CreateSession(*LocalPlayer->GetPreferredUniqueNetId(),NAME_GameSession,*SessionSettings);
+}
+
+void AMPPCharacter::OnCreateSessionComplete(FName SessionName, bool bWasSuccessful)
+{
+	if (bWasSuccessful)
+	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				15.0f,
+				FColor::Green,
+				FString::Printf(TEXT("Session Creation: Successful : %s"), *SessionName.ToString()));
+		}	
+	}
+	else
+	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				15.0f,
+				FColor::Red,
+				FString::Printf(TEXT("Session Creation: Failed : No Session")));
+		}
+	}
 }
 
