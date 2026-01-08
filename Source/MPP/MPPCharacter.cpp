@@ -10,7 +10,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
-#include "kismet/GameplayStatics.h"
+#include "Interfaces/OnlineSessionInterface.h"
 #include "MPP.h"
 
 AMPPCharacter::AMPPCharacter()
@@ -49,6 +49,21 @@ AMPPCharacter::AMPPCharacter()
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
+
+	// Accessing the Online Steam Subsystem
+	IOnlineSubsystem* OnlineSubsystem = IOnlineSubsystem::Get();
+	if (OnlineSubsystem)
+	{
+		OnlineSessionInterface = OnlineSubsystem->GetSessionInterface();
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				15.0f,
+				FColor::Blue,
+				FString::Printf(TEXT("Found Subsystem %s"), *OnlineSubsystem->GetSubsystemName().ToString()));
+		}
+	}
 }
 
 void AMPPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -131,27 +146,6 @@ void AMPPCharacter::DoJumpEnd()
 {
 	// signal the character to stop jumping
 	StopJumping();
+	
 }
 
-void AMPPCharacter::OpenLobby()
-{
-	UWorld* World = GetWorld();
-	if (World)
-	{
-		World->ServerTravel("Game/ThirdPerson/Lvl_Lobby?listen");
-	}
-}
-
-void AMPPCharacter::CallOpenLevel(const FString& Address)
-{
-	UGameplayStatics::OpenLevel(this, *Address);
-}
-
-void AMPPCharacter::CallClientTravel(const FString& Address)
-{
-	APlayerController* PlayerController = GetGameInstance()->GetFirstLocalPlayerController();
-	if (PlayerController)
-	{
-		PlayerController->ClientTravel(Address,TRAVEL_Absolute);
-	}
-}
