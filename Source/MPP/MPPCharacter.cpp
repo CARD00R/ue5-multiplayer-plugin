@@ -12,11 +12,14 @@
 #include "InputActionValue.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "OnlineSessionSettings.h"
+#include "Online/OnlineSessionNames.h"
 #include "MPP.h"
+#include "StateTreeTypes.h"
 
 
 AMPPCharacter::AMPPCharacter() :
-	CreateSessionCompleteDelegate(FOnCreateSessionCompleteDelegate::CreateUObject(this,&ThisClass::OnCreateSessionComplete))
+	CreateSessionCompleteDelegate(FOnCreateSessionCompleteDelegate::CreateUObject(this,&ThisClass::OnCreateSessionComplete)),
+	FindSessionCompleteDelegate(FOnFindSessionsCompleteDelegate::CreateUObject(this,&ThisClass::OnFindSessionComplete))
 {
 	
 	
@@ -207,6 +210,58 @@ void AMPPCharacter::OnCreateSessionComplete(FName SessionName, bool bWasSuccessf
 				15.0f,
 				FColor::Red,
 				FString::Printf(TEXT("Session Creation: Failed : No Session")));
+		}
+	}
+}
+
+void AMPPCharacter::JoinGameSession()
+{
+	if (!OnlineSessionInterface.IsValid())
+	{
+		return;
+	}
+	// Add delegate to OnFindSessionsDelegate list
+	OnlineSessionInterface->AddOnFindSessionsCompleteDelegate_Handle(FindSessionCompleteDelegate);
+
+	// Find Game Session
+	SessionSearch = MakeShareable(new FOnlineSessionSearch());
+	SessionSearch->MaxSearchResults = 100.0f;
+	SessionSearch->bIsLanQuery = false;
+	SessionSearch->QuerySettings.Set(SEARCH_LOBBIES,true,EOnlineComparisonOp::Equals);
+	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
+	FOnlineSessionSearch SearchSettings;
+	
+	OnlineSessionInterface->FindSessions(*LocalPlayer->GetPreferredUniqueNetId(),SessionSearch.ToSharedRef());
+	
+}
+
+void AMPPCharacter::OnFindSessionComplete(bool bWasSuccessful)
+{
+	if (bWasSuccessful)
+	{
+		for (auto Result : SessionSearch->SearchResults)
+		{
+			FString ID = Result.GetSessionIdStr();
+			FString User = Result.Session.OwningUserName;
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(
+					-1,
+					15.0f,
+					FColor::Cyan,
+					FString::Printf(TEXT("ID %s, User: %s"),*ID,*User));
+			}
+		}
+	}
+	else
+	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				15.0f,
+				FColor::Cyan,
+				FString::Printf(TEXT("Sessions Found: NONE")));
 		}
 	}
 }

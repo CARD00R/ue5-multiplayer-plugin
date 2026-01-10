@@ -7,6 +7,7 @@
 #include "Logging/LogMacros.h"
 #include "OnlineSubsystem.h"
 #include "Interfaces/OnlineSessionDelegates.h"
+#include "OnlineSessionSettings.h"
 #include "MPPCharacter.generated.h"
 //#include "Interfaces/OnlineSessionInterface.h"
 
@@ -101,11 +102,18 @@ public:
 	IOnlineSessionPtr OnlineSessionInterface;
 
 protected:
+	// Session Creation
 	UFUNCTION(BlueprintCallable)
 	void CreateGameSession();
 	void OnCreateSessionComplete(FName SessionName, bool bWasSuccessful);
+	//Session Join
+	UFUNCTION(BlueprintCallable)
+	void JoinGameSession();
+	void OnFindSessionComplete(bool bWasSuccessful);
+
 private:
 	FOnCreateSessionCompleteDelegate CreateSessionCompleteDelegate;
-	
+	FOnFindSessionsCompleteDelegate FindSessionCompleteDelegate;
+	TSharedPtr<FOnlineSessionSearch> SessionSearch;
 };
 
